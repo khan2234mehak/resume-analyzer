@@ -1,13 +1,15 @@
 import os
-from flask import Flask, jsonify
+from flask import Flask, jsonify, send_from_directory
 from flask_cors import CORS
 
 from config import Config
 from extensions import db, jwt, bcrypt
 
+FRONTEND_DIST = os.path.join(os.path.dirname(os.path.abspath(__file__)), "frontend_dist")
+
 
 def create_app():
-    app = Flask(__name__)
+    app = Flask(__name__, static_folder=FRONTEND_DIST, static_url_path="")
     app.config.from_object(Config)
 
     os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
@@ -31,6 +33,14 @@ def create_app():
     @app.route("/api/health", methods=["GET"])
     def health_check():
         return jsonify({"status": "ok", "service": "AI Resume Analyzer API"}), 200
+
+    @app.route("/", defaults={"path": ""})
+    @app.route("/<path:path>")
+    def serve_frontend(path):
+        full_path = os.path.join(app.static_folder, path)
+        if path and os.path.exists(full_path):
+            return send_from_directory(app.static_folder, path)
+        return send_from_directory(app.static_folder, "index.html")
 
     @app.errorhandler(413)
     def file_too_large(e):
